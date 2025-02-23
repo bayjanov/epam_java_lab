@@ -1,0 +1,4 @@
+Trainer,John,Doe,Yoga,true
+Trainer,Jane,Smith,Strength Training,true
+Trainee,Alice,Johnson,true,2000-01-01,123 Main St
+Trainee,Bob,Brown,true,2001-02-02,456 Elm St

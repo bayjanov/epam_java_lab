@@ -1,0 +1,8 @@
+storage:
+  file:
+    path: classpath:storage-data.txt
+
+logging:
+  level:
+    root: INFO
+    com.epamlab.gymcrm: DEBUG
