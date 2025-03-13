@@ -1,47 +1,139 @@
 package com.epamlab.gymcrm.service;
 
-import com.epamlab.gymcrm.dao.TrainerDao;
-import com.epamlab.gymcrm.model.Trainer;
-import com.epamlab.gymcrm.service.trainer.TrainerService;
-import com.epamlab.gymcrm.service.user.UserProfileService;
+import com.epamlab.gymcrm.trainer.model.Trainer;
+import com.epamlab.gymcrm.trainer.repository.TrainerRepository;
+import com.epamlab.gymcrm.trainer.service.TrainerService;
+import com.epamlab.gymcrm.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import static org.mockito.Mockito.*;
+
+import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class TrainerServiceTest {
 
     @Mock
-    private UserProfileService userProfileService;
+    private TrainerRepository trainerRepository;
 
     @Mock
-    private TrainerDao trainerDao;
+    private UserService userProfileService;
 
+    @InjectMocks
     private TrainerService trainerService;
+
+    private Trainer trainer;
 
     @BeforeEach
     void setUp() {
-        trainerService = new TrainerService();
-        trainerService.setTrainerDao(trainerDao);
-        trainerService.setUserProfileService(userProfileService);
+        trainer = new Trainer("John", "Doe", "Strength", true);
+        trainer.setUsername("john.doe");
+        trainer.setPassword("password");
     }
 
     @Test
-    void createTrainer_ShouldGenerateCredentials() {
-        // Mock the UserProfileService to return known values
-        when(userProfileService.generateUniqueUsername(anyString(), anyString()))
-                .thenReturn("test.user");
-        when(userProfileService.generatePassword(anyInt()))
-                .thenReturn("password123");
+    void testCreateTrainer_GeneratesCredentials() {
+        when(userProfileService.generateUniqueUsername("John", "Doe")).thenReturn("john.doe");
+        when(userProfileService.generatePassword(10)).thenReturn("securePass123");
 
-        Trainer trainer = new Trainer("Test", "User", "Yoga", true);
         trainerService.createTrainer(trainer);
 
-        assertNotNull(trainer.getUsername()); // Now "test.user"
-        assertNotNull(trainer.getPassword()); // Now "password123"
+        assertEquals("john.doe", trainer.getUsername());
+        assertEquals("securePass123", trainer.getPassword());
+        verify(trainerRepository).save(trainer);
+    }
+
+    @Test
+    void testAuthenticate_Success() {
+        when(trainerRepository.findByUsername("john.doe"))
+                .thenReturn(Optional.of(trainer));
+
+        assertTrue(trainerService.authenticateTrainer("john.doe", "password"));
+    }
+
+    @Test
+    void testAuthenticate_Failure() {
+        when(trainerRepository.findByUsername("john.doe"))
+                .thenReturn(Optional.of(trainer));
+
+        assertFalse(trainerService.authenticateTrainer("john.doe", "wrongPass"));
+    }
+
+    @Test
+    void testGetTrainerByUsername() {
+        when(trainerRepository.findByUsername("john.doe"))
+                .thenReturn(Optional.of(trainer));
+
+        Trainer result = trainerService.getTrainerByUsername("john.doe");
+        assertNotNull(result);
+        assertEquals("John", result.getFirstName());
+    }
+
+    @Test
+    void testChangePassword_Authenticated() {
+        when(trainerRepository.findByUsername("john.doe"))
+                .thenReturn(Optional.of(trainer));
+
+        trainerService.changeTrainerPassword("john.doe", "newPass123");
+
+        assertEquals("newPass123", trainer.getPassword());
+        verify(trainerRepository).save(trainer);
+    }
+
+    @Test
+    void testUpdateTrainer_ValidFields() {
+        when(trainerRepository.findByUsername("john.doe"))
+                .thenReturn(Optional.of(trainer));
+
+        Trainer updated = new Trainer("Updated", "Doe", "Cardio", true);
+
+        trainerService.updateTrainer("john.doe", "password", updated);
+
+        assertEquals("Updated", trainer.getFirstName());
+        assertEquals("Doe", trainer.getLastName());
+        verify(trainerRepository).save(trainer);
+    }
+
+    @Test
+    void testUpdateTrainer_MissingFields() {
+        Trainer invalidTrainer = new Trainer("", "Doe", "Cardio", true);
+        when(trainerRepository.findByUsername("john.doe")).thenReturn(Optional.of(trainer));
+
+        assertThrows(IllegalArgumentException.class, () ->
+                trainerService.updateTrainer("john.doe", "password", invalidTrainer));
+    }
+
+    @Test
+    void testActivateDeactivateTrainer() {
+        when(trainerRepository.findByUsername("john.doe")).thenReturn(Optional.of(trainer));
+
+        trainerService.activateTrainer("john.doe", "password");
+        assertTrue(trainer.isActive());
+
+        trainerService.deactivateTrainer("john.doe", "password");
+        assertFalse(trainer.isActive());
+
+        verify(trainerRepository, times(2)).save(trainer);
+    }
+
+    @Test
+    void testCreateTrainer_Validation() {
+        Trainer invalidTrainer = new Trainer("", "Doe", "Cardio", true);
+        assertThrows(IllegalArgumentException.class,
+                () -> trainerService.createTrainer(invalidTrainer));
+    }
+
+    @Test
+    void testAuthentication_InvalidUser() {
+        when(trainerRepository.findByUsername("nonexistent"))
+                .thenReturn(Optional.empty());
+
+        assertFalse(trainerService.authenticateTrainer("nonexistent", "pass"));
     }
 }
