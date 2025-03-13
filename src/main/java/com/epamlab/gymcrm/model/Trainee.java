@@ -1,16 +1,31 @@
 package com.epamlab.gymcrm.model;
 
+import jakarta.persistence.*;
+
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 
+@Entity
+@Table(name = "trainees")
 public class Trainee extends User {
-    private static long idCounter = 1;
 
-    private final Long userId;
+    @Column
     private LocalDate dateOfBirth;
+
+    @Column
     private String address;
 
+    @ManyToMany
+    @JoinTable(
+            name = "trainee_trainer",
+            joinColumns = @JoinColumn(name = "trainee_id"),
+            inverseJoinColumns = @JoinColumn(name = "trainer_id")
+    )
+    private Set<Trainer> trainers = new HashSet<>();
+
     public Trainee() {
-        this.userId = idCounter++;
+        super();
     }
 
     public Trainee(String firstName, String lastName, boolean isActive,
@@ -18,11 +33,10 @@ public class Trainee extends User {
         super(firstName, lastName, isActive);
         this.dateOfBirth = dateOfBirth;
         this.address = address;
-        this.userId = idCounter++;
     }
 
-    public Long getUserId() { return userId; }
 
+    // Getters & Setters
     public LocalDate getDateOfBirth() {
         return dateOfBirth;
     }
@@ -37,10 +51,17 @@ public class Trainee extends User {
         this.address = address;
     }
 
+    public Set<Trainer> getTrainers() {
+        return trainers;
+    }
+    public void setTrainers(Set<Trainer> trainers) {
+        this.trainers = trainers;
+    }
+
     @Override
     public String toString() {
         return "Trainee{" +
-                "userId=" + userId +
+                "userId=" + this.getId() +
                 ", firstName='" + getFirstName() + '\'' +
                 ", lastName='" + getLastName() + '\'' +
                 ", username='" + getUsername() + '\'' +

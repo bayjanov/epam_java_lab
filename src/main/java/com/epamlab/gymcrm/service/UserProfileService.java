@@ -1,4 +1,4 @@
-package com.epamlab.gymcrm.service.user;
+package com.epamlab.gymcrm.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

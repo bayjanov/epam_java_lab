@@ -1,37 +1,61 @@
 package com.epamlab.gymcrm.model;
 
-import java.time.LocalDateTime;
+import jakarta.persistence.*;
+import java.time.LocalDate;
 
+@Entity
+@Table(name = "trainings")
 public class Training {
-    private static long idCounter = 1;
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String name;
+
+    @Column(nullable = false)
+    private String trainingName;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private TrainingType trainingType;
-    private LocalDateTime trainingDate;
+
+    @Column(nullable = false)
+    private LocalDate trainingDate;
+
+    @Column(nullable = false)
     private int durationMinutes;
 
     // OneToMany?
-    Trainer trainer;
-    Trainee trainee;
+    @ManyToOne
+    @JoinColumn(name = "trainee_id")
+    private Trainee trainee;
 
-    public Training() {
-        this.id = idCounter++;
-    }
+    @ManyToOne
+    @JoinColumn(name = "trainer_id")
+    private Trainer trainer;
 
-    public Training(Trainer trainer, Trainee trainee,
-                    TrainingType trainingType, LocalDateTime trainingDate,
-                    int durationMinutes) {
+    public Training() { }
+
+    public Training(
+            Trainer trainer, Trainee trainee,
+            String trainingName, TrainingType trainingType,
+            LocalDate trainingDate, int durationMinutes) {
         this.trainer = trainer;
         this.trainee = trainee;
+        this.trainingName = trainingName;
         this.trainingType = trainingType;
         this.trainingDate = trainingDate;
         this.durationMinutes = durationMinutes;
-        this.id = idCounter++;
     }
 
     // Getters/setters
     public Long getId() { return id; }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getTrainingName() { return trainingName; }
+    public void setTrainingName(String trainingName) { this.trainingName = trainingName; }
 
     public Trainer getTrainer() { return trainer; }
     public void setTrainer(Trainer trainer) { this.trainer = trainer; }
@@ -42,8 +66,8 @@ public class Training {
     public TrainingType getTrainingType() { return trainingType; }
     public void setTrainingType(TrainingType trainingType) { this.trainingType = trainingType; }
 
-    public LocalDateTime getTrainingDate() { return trainingDate; }
-    public void setTrainingDate(LocalDateTime trainingDate) { this.trainingDate = trainingDate; }
+    public LocalDate getTrainingDate() { return trainingDate; }
+    public void setTrainingDate(LocalDate trainingDate) { this.trainingDate = trainingDate; }
 
     public int getDurationMinutes() { return durationMinutes; }
     public void setDurationMinutes(int durationMinutes) { this.durationMinutes = durationMinutes; }

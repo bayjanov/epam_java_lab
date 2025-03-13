@@ -1,10 +1,28 @@
 package com.epamlab.gymcrm.model;
 
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "users")
+@Inheritance(strategy = InheritanceType.JOINED)
 public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
     String firstName;
+
+    @Column(nullable = false)
     String lastName;
+
+    @Column(unique = true, nullable = false)
     String username;
+
+    @Column(nullable = false)
     String password;
+
+    @Column(nullable = false)
     boolean isActive;
 
     protected User(){}
@@ -13,6 +31,14 @@ public class User {
         this.firstName = firstName;
         this.lastName = lastName;
         this.isActive = isActive;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getFirstName() {
@@ -49,7 +75,5 @@ public class User {
     public void setActive(boolean active) {
         isActive = active;
     }
-
-
 }
 

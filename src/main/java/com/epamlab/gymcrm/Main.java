@@ -10,72 +10,74 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
-import java.time.LocalDateTime;
-import java.util.Map;
+import java.time.LocalDate;
+import java.util.List;
 
 public class Main {
     private static final Logger logger = LoggerFactory.getLogger(Main.class);
 
     public static void main(String[] args) {
-        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(ApplicationConfig.class);
+
+        // Bootstrap Spring
+        AnnotationConfigApplicationContext context =
+                new AnnotationConfigApplicationContext(ApplicationConfig.class);
+
+        // Obtain  facade bean
         GymFacade gymFacade = context.getBean(GymFacade.class);
 
-        // List Preloaded Trainers
-        logger.info("Preloaded Trainers:");
-        Map<Long, Trainer> trainers = gymFacade.listAllTrainers();
-        trainers.forEach((id, trainer) ->
-                logger.info("Trainer {}: {}", id, trainer)
-        );
+        // CREATE AND PERSIST SAMPLE TRAINERS
+        Trainer trainer1 = new Trainer("Alice", "Brown", "Yoga", true);
+        Trainer trainer2 = new Trainer("Bob", "Green", "Strength", true);
+        gymFacade.createTrainer(trainer1);
+        gymFacade.createTrainer(trainer2);
 
-        // List Preloaded Trainees
-        logger.info("Preloaded Trainees:");
-        Map<Long, Trainee> trainees = gymFacade.listAllTrainees();
-        trainees.forEach((id, trainee) ->
-                logger.info("Trainee {}: {}", id, trainee)
-        );
+        // 3. List all trainers
+        logger.info("\n=== LISTING TRAINERS ===");
+        List<Trainer> allTrainers = gymFacade.listAllTrainers();
+        allTrainers.forEach(t -> logger.info("Trainer: {}", t));
 
-        // Create Training Sessions
-        if (!trainers.isEmpty() && !trainees.isEmpty()) {
-            // Get first trainer and trainee from preloaded data
-            Trainer firstTrainer = trainers.values().iterator().next();
-            Trainee firstTrainee = trainees.values().iterator().next();
+        // CREATE AND PERSIST SAMPLE TRAINEES
+        Trainee trainee1 = new Trainee("Charlie", "White", true,
+                LocalDate.of(1985, 5, 20), "123 Main St");
+        Trainee trainee2 = new Trainee("Diana", "Black", true,
+                LocalDate.of(1990, 8, 15), "456 Oak Ave");
+        gymFacade.createTrainee(trainee1);
+        gymFacade.createTrainee(trainee2);
+
+        // 4. List all trainees
+        logger.info("\n=== LISTING TRAINEES ===");
+        List<Trainee> allTrainees = gymFacade.listAllTrainees();
+        allTrainees.forEach(t -> logger.info("Trainee: {}", t));
+
+        // CREATE A TRAINING SESSION
+        if (!allTrainers.isEmpty() && !allTrainees.isEmpty()) {
+            Trainer firstTrainer = allTrainers.get(0);
+            Trainee firstTrainee = allTrainees.get(0);
 
             Training training = new Training(
                     firstTrainer,
                     firstTrainee,
+                    "Morning Yoga",
                     TrainingType.YOGA,
-                    LocalDateTime.now(),
+                    LocalDate.now(),
                     60
             );
-            gymFacade.createTraining(training);
-            logger.info("Created Training: {}", training);
+            gymFacade.addTraining(training);
+            logger.info("\nCreated Training: {}", training);
         }
 
-        // Delete First Trainee
-        if (!trainees.isEmpty()) {
-            Long firstTraineeId = trainees.keySet().iterator().next();
-            logger.info("Deleting Trainee with ID: {}", firstTraineeId);
-            gymFacade.deleteTrainee(firstTraineeId);
-        }
-
-        // Delete First Trainer
-        if (!trainers.isEmpty()) {
-            Long firstTrainerId = trainers.keySet().iterator().next();
-            logger.info("Deleting Trainer with ID: {}", firstTrainerId);
-            gymFacade.deleteTrainer(firstTrainerId);
-        }
-
-        // Final State After Deletion
-        logger.info("Final Trainers:");
-        gymFacade.listAllTrainers().forEach((id, trainer) ->
-                logger.info("Trainer {}: {}", id, trainer)
+        // FINAL STATE
+        logger.info("\n=== FINAL TRAINERS ===");
+        gymFacade.listAllTrainers().forEach(trainer ->
+                logger.info("Trainer: {}", trainer)
         );
 
-        logger.info("Final Trainees:");
-        gymFacade.listAllTrainees().forEach((id, trainee) ->
-                logger.info("Trainee {}: {}", id, trainee)
+        logger.info("\n=== FINAL TRAINEES ===");
+        gymFacade.listAllTrainees().forEach(trainee ->
+                logger.info("Trainee: {}", trainee)
         );
 
+        // Close Spring context
         context.close();
     }
 }
