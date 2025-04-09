@@ -79,6 +79,17 @@
             <version>2.1.1</version>
         </dependency>
 
+
+        <!-- Actuator + Prometheus -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
         <!-- SnakeYAML for YAML file parsing -->
         <dependency>
             <groupId>org.yaml</groupId>

@@ -6,7 +6,6 @@ spring:
     password: 12345678
 
   jpa:
-    # Tells Spring Boot how to handle the schema
     hibernate:
       ddl-auto: create-drop
     show-sql: true
@@ -14,14 +13,21 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        # if you want:
-        # current_session_context_class: thread
 
 logging:
   level:
     root: INFO
     com.epamlab.gymcrm: DEBUG
 
-storage:
-  file:
-    path: classpath:storage-data.txt
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
