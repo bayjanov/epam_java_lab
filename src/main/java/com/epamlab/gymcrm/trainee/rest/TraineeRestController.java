@@ -5,6 +5,8 @@ import com.epamlab.gymcrm.trainee.model.Trainee;
 import com.epamlab.gymcrm.training.model.Training;
 import com.epamlab.gymcrm.training.model.TrainingType;
 import com.epamlab.gymcrm.trainer.model.Trainer;
+import com.epamlab.gymcrm.metrics.MetricsService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -26,9 +28,11 @@ public class TraineeRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(TraineeRestController.class);
     private final GymFacade gymFacade;
+    private final MetricsService metricsService;
 
-    public TraineeRestController(GymFacade gymFacade) {
+    public TraineeRestController(GymFacade gymFacade, MetricsService metricsService) {
         this.gymFacade = gymFacade;
+        this.metricsService = metricsService;
     }
 
     private String generateTransactionId() {
@@ -55,6 +59,7 @@ public class TraineeRestController {
         response.put("password", trainee.getPassword());
 
         logger.info("[{}] Trainee registered with username: {}", txId, trainee.getUsername());
+        metricsService.incrementTraineeLogin();
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
@@ -75,6 +80,7 @@ public class TraineeRestController {
         boolean isValid = gymFacade.authenticateTrainee(username, password);
         if (isValid) {
             logger.info("[{}] Trainee login successful: {}", txId, username);
+            metricsService.incrementTraineeLogin();
             return ResponseEntity.ok("Login successful");
         } else {
             logger.warn("[{}] Trainee login failed: {}", txId, username);

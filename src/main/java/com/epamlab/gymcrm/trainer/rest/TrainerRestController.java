@@ -4,6 +4,8 @@ import com.epamlab.gymcrm.facade.GymFacade;
 import com.epamlab.gymcrm.trainer.model.Trainer;
 import com.epamlab.gymcrm.trainee.model.Trainee;
 import com.epamlab.gymcrm.training.model.Training;
+import com.epamlab.gymcrm.metrics.MetricsService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -25,9 +27,12 @@ public class TrainerRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(TrainerRestController.class);
     private final GymFacade gymFacade;
+    private final MetricsService metricsService;
 
-    public TrainerRestController(GymFacade gymFacade) {
+
+    public TrainerRestController(GymFacade gymFacade, MetricsService metricsService){
         this.gymFacade = gymFacade;
+        this.metricsService = metricsService;
     }
 
     private String generateTxId() {
@@ -52,6 +57,7 @@ public class TrainerRestController {
         response.put("password", trainer.getPassword());
 
         logger.info("[{}] Trainer registered with username: {}", txId, trainer.getUsername());
+        metricsService.incrementTrainerLogin();
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
@@ -72,6 +78,7 @@ public class TrainerRestController {
         boolean isValid = gymFacade.authenticateTrainer(username, password);
         if (isValid) {
             logger.info("[{}] Trainer login successful: {}", txId, username);
+            metricsService.incrementTrainerLogin();
             return ResponseEntity.ok("Login successful");
         } else {
             logger.warn("[{}] Trainer login failed: {}", txId, username);

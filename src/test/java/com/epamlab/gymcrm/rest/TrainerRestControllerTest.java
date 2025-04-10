@@ -1,6 +1,7 @@
 package com.epamlab.gymcrm.rest;
 
 import com.epamlab.gymcrm.facade.GymFacade;
+import com.epamlab.gymcrm.metrics.MetricsService;
 import com.epamlab.gymcrm.trainer.model.Trainer;
 import com.epamlab.gymcrm.trainee.model.Trainee;
 import com.epamlab.gymcrm.training.model.Training;
@@ -26,6 +27,7 @@ public class TrainerRestControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @MockBean private GymFacade gymFacade;
+    @MockBean private MetricsService metricsService;
 
     private Trainer trainer;
     private ObjectMapper mapper;

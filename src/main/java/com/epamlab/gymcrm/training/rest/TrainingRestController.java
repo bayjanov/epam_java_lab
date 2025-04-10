@@ -5,6 +5,8 @@ import com.epamlab.gymcrm.training.model.Training;
 import com.epamlab.gymcrm.training.model.TrainingType;
 import com.epamlab.gymcrm.trainer.model.Trainer;
 import com.epamlab.gymcrm.trainee.model.Trainee;
+import com.epamlab.gymcrm.metrics.MetricsService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -25,9 +27,11 @@ public class TrainingRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(TrainingRestController.class);
     private final GymFacade gymFacade;
+    private final MetricsService metricsService;
 
-    public TrainingRestController(GymFacade gymFacade) {
+    public TrainingRestController(GymFacade gymFacade, MetricsService metricsService) {
         this.gymFacade = gymFacade;
+        this.metricsService = metricsService;
     }
 
     private String generateTxId() {
@@ -53,6 +57,7 @@ public class TrainingRestController {
         // Check if the user is an authenticated trainer
         if (!gymFacade.authenticateTrainer(trainerUsername, trainerPassword)) {
             logger.warn("[{}] Unauthorized to add training: {}", txId, trainerUsername);
+
             return ResponseEntity.status(401).body("Not an authenticated trainer");
         }
 
@@ -108,6 +113,8 @@ public class TrainingRestController {
 
         logger.info("[{}] Training added: {} for trainee={} by trainer={}",
                 txId, trainingName, traineeUsername, usedTrainerUsername);
+
+        metricsService.incrementTrainingAdded(); // ro increment the training creation count
 
         return ResponseEntity.ok("Training added successfully");
     }

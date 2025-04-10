@@ -1,10 +1,9 @@
 package com.epamlab.gymcrm.rest;
 
 import com.epamlab.gymcrm.facade.GymFacade;
+import com.epamlab.gymcrm.metrics.MetricsService;
 import com.epamlab.gymcrm.trainee.model.Trainee;
 import com.epamlab.gymcrm.trainer.model.Trainer;
-import com.epamlab.gymcrm.training.model.Training;
-import com.epamlab.gymcrm.training.model.TrainingType;
 import com.epamlab.gymcrm.training.rest.TrainingRestController;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +26,8 @@ public class TrainingRestControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @MockBean private GymFacade gymFacade;
+    @MockBean private MetricsService metricsService;
+
     private ObjectMapper mapper;
 
     private Trainer trainer;

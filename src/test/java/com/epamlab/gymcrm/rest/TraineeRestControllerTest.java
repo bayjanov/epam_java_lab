@@ -1,6 +1,7 @@
 package com.epamlab.gymcrm.rest;
 
 import com.epamlab.gymcrm.facade.GymFacade;
+import com.epamlab.gymcrm.metrics.MetricsService;
 import com.epamlab.gymcrm.trainee.model.Trainee;
 import com.epamlab.gymcrm.trainee.rest.TraineeRestController;
 import com.epamlab.gymcrm.trainer.model.Trainer;
@@ -27,8 +28,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class TraineeRestControllerTest {
 
     @Autowired private MockMvc mockMvc;
-    @MockBean
-    private GymFacade gymFacade;
+    @MockBean private GymFacade gymFacade;
+    @MockBean private MetricsService metricsService;
+
     private Trainee sampleTrainee;
     private ObjectMapper mapper;
 
