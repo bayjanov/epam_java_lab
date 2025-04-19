@@ -2,6 +2,7 @@ package com.epamlab.gymcrm.rest;
 
 import com.epamlab.gymcrm.facade.GymFacade;
 import com.epamlab.gymcrm.metrics.MetricsService;
+import com.epamlab.gymcrm.trainee.dto.TraineeRegistrationResponse;
 import com.epamlab.gymcrm.trainee.model.Trainee;
 import com.epamlab.gymcrm.trainee.rest.TraineeRestController;
 import com.epamlab.gymcrm.trainer.model.Trainer;
@@ -12,6 +13,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
@@ -19,17 +21,22 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
 import java.util.*;
+import com.epamlab.gymcrm.security.jwt.JwtTokenProvider;
+import com.epamlab.gymcrm.security.bruteforce.LoginAttemptService;
 
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(TraineeRestController.class)
+@AutoConfigureMockMvc(addFilters = false)
 public class TraineeRestControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @MockBean private GymFacade gymFacade;
     @MockBean private MetricsService metricsService;
+    @MockBean private LoginAttemptService loginAttemptService;
+    @MockBean private JwtTokenProvider jwtTokenProvider;
 
     private Trainee sampleTrainee;
     private ObjectMapper mapper;
@@ -47,12 +54,16 @@ public class TraineeRestControllerTest {
     void registerTrainee_shouldReturnCredentials() throws Exception {
         String body = mapper.writeValueAsString(sampleTrainee);
 
+        when(gymFacade.createTrainee(any())).thenReturn(
+                new TraineeRegistrationResponse(sampleTrainee, "pass123")
+        );
+
         mockMvc.perform(post("/api/trainees/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.username").value("john.doe"))
-                .andExpect(jsonPath("$.password").value("pass123"));
+                .andExpect(jsonPath("$.trainee.username").value("john.doe"))
+                .andExpect(jsonPath("$.rawPassword").value("pass123"));
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.epamlab.gymcrm.rest;
 
 import com.epamlab.gymcrm.facade.GymFacade;
 import com.epamlab.gymcrm.metrics.MetricsService;
+import com.epamlab.gymcrm.trainer.dto.TrainerRegistrationResponse;
 import com.epamlab.gymcrm.trainer.model.Trainer;
 import com.epamlab.gymcrm.trainee.model.Trainee;
 import com.epamlab.gymcrm.training.model.Training;
@@ -10,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
@@ -17,17 +19,22 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
 import java.util.*;
+import com.epamlab.gymcrm.security.jwt.JwtTokenProvider;
+import com.epamlab.gymcrm.security.bruteforce.LoginAttemptService;
 
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest
+@AutoConfigureMockMvc(addFilters = false)
 public class TrainerRestControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @MockBean private GymFacade gymFacade;
     @MockBean private MetricsService metricsService;
+    @MockBean private LoginAttemptService loginAttemptService;
+    @MockBean private JwtTokenProvider jwtTokenProvider;
 
     private Trainer trainer;
     private ObjectMapper mapper;
@@ -44,12 +51,16 @@ public class TrainerRestControllerTest {
     void registerTrainer_shouldReturnCredentials() throws Exception {
         String body = mapper.writeValueAsString(trainer);
 
+        when(gymFacade.createTrainer(any())).thenReturn(
+                new TrainerRegistrationResponse(trainer, "pass123")
+        );
+
         mockMvc.perform(post("/api/trainers/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.username").value("jane.doe"))
-                .andExpect(jsonPath("$.password").value("pass123"));
+                .andExpect(jsonPath("$.trainer.username").value("jane.doe"))
+                .andExpect(jsonPath("$.rawPassword").value("pass123"));
     }
 
     @Test

@@ -1,12 +1,17 @@
 package com.epamlab.gymcrm.trainee.rest;
 
 import com.epamlab.gymcrm.facade.GymFacade;
+import com.epamlab.gymcrm.security.bruteforce.LoginAttemptService;
+import com.epamlab.gymcrm.security.jwt.JwtTokenProvider;
+import com.epamlab.gymcrm.trainee.dto.TraineeRegistrationResponse;
 import com.epamlab.gymcrm.trainee.model.Trainee;
 import com.epamlab.gymcrm.training.model.Training;
 import com.epamlab.gymcrm.training.model.TrainingType;
 import com.epamlab.gymcrm.trainer.model.Trainer;
 import com.epamlab.gymcrm.metrics.MetricsService;
 
+import com.epamlab.gymcrm.user.dto.RegistrationResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -29,10 +34,18 @@ public class TraineeRestController {
     private static final Logger logger = LoggerFactory.getLogger(TraineeRestController.class);
     private final GymFacade gymFacade;
     private final MetricsService metricsService;
+    private final LoginAttemptService loginAttemptService;
+    private final JwtTokenProvider jwtTokenProvider;
 
-    public TraineeRestController(GymFacade gymFacade, MetricsService metricsService) {
+    public TraineeRestController(
+            GymFacade gymFacade,
+            MetricsService metricsService,
+            LoginAttemptService loginAttemptService,
+            JwtTokenProvider jwtTokenProvider) {
         this.gymFacade = gymFacade;
         this.metricsService = metricsService;
+        this.loginAttemptService = loginAttemptService;
+        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     private String generateTransactionId() {
@@ -47,21 +60,17 @@ public class TraineeRestController {
             @ApiResponse(responseCode = "400", description = "Validation error")
     })
     @PostMapping("/register")
-    public ResponseEntity<Map<String, String>> registerTrainee(@RequestBody Trainee trainee) {
+    public ResponseEntity<TraineeRegistrationResponse> registerTrainee(@RequestBody Trainee trainee) {
         String txId = generateTransactionId();
         logger.info("[{}] POST /api/trainees/register => {}", txId, trainee);
 
-        // facade sets username & password
-        gymFacade.createTrainee(trainee);
+        TraineeRegistrationResponse result = gymFacade.createTrainee(trainee);
 
-        Map<String, String> response = new HashMap<>();
-        response.put("username", trainee.getUsername());
-        response.put("password", trainee.getPassword());
-
-        logger.info("[{}] Trainee registered with username: {}", txId, trainee.getUsername());
+        logger.info("[{}] Trainee registered with username: {}", txId, result.getTrainee().getUsername());
         metricsService.incrementTraineeLogin();
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
+        return new ResponseEntity<>(result, HttpStatus.CREATED);
     }
+
 
     // LOGIN (GET)
     @Operation(summary = "Trainee login", description = "Checks the provided username/password for a Trainee.")
@@ -77,15 +86,27 @@ public class TraineeRestController {
         String txId = generateTransactionId();
         logger.info("[{}] GET /api/trainees/login?username={}", txId, username);
 
+       // Brute force block check
+        if (loginAttemptService.isBlocked(username)) {
+            logger.warn("[{}] Trainee account locked: {}", txId, username);
+            return ResponseEntity.status(423).body("Account temporarily locked due to failed attempts");
+        }
+
+        // Authenticate
         boolean isValid = gymFacade.authenticateTrainee(username, password);
         if (isValid) {
-            logger.info("[{}] Trainee login successful: {}", txId, username);
+            loginAttemptService.loginSucceeded(username);
             metricsService.incrementTraineeLogin();
-            return ResponseEntity.ok("Login successful");
+
+            String token = jwtTokenProvider.generateToken(username);
+            logger.info("[{}] Trainee login success: {}", txId, username);
+            return ResponseEntity.ok(token);
         } else {
+            loginAttemptService.loginFailed(username);
             logger.warn("[{}] Trainee login failed: {}", txId, username);
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+            return ResponseEntity.status(401).body("Invalid credentials");
         }
+
     }
 
     // CHANGE LOGIN (PUT)
@@ -95,6 +116,7 @@ public class TraineeRestController {
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "404", description = "Trainee not found")
     })
+    @SecurityRequirement(name = "bearerAuth")
     @PutMapping("/change-login")
     public ResponseEntity<String> changeTraineePassword(
             @RequestParam String username,
@@ -128,6 +150,7 @@ public class TraineeRestController {
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "404", description = "Trainee not found")
     })
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/profile")
     public ResponseEntity<?> getTraineeProfile(
             @RequestParam String username,
@@ -177,6 +200,7 @@ public class TraineeRestController {
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "404", description = "Trainee not found")
     })
+    @SecurityRequirement(name = "bearerAuth")
     @PutMapping("/profile")
     public ResponseEntity<?> updateTraineeProfile(
             @RequestParam String username,
@@ -258,6 +282,7 @@ public class TraineeRestController {
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "404", description = "Trainee not found")
     })
+    @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/profile")
     public ResponseEntity<String> deleteTraineeProfile(
             @RequestParam String username,
@@ -288,6 +313,7 @@ public class TraineeRestController {
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "404", description = "Trainee not found")
     })
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/not-assigned-trainers")
     public ResponseEntity<?> getUnassignedActiveTrainers(
             @RequestParam String username,
@@ -326,6 +352,7 @@ public class TraineeRestController {
             @ApiResponse(responseCode = "404", description = "Trainer or Trainee not found"),
             @ApiResponse(responseCode = "400", description = "Invalid request body")
     })
+    @SecurityRequirement(name = "bearerAuth")
     @PutMapping("/trainers-list")
     public ResponseEntity<?> updateTraineeTrainers (
             @RequestParam String username,
@@ -382,6 +409,7 @@ public class TraineeRestController {
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "400", description = "Invalid date format")
     })
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/trainings")
     public ResponseEntity<?> getTraineeTrainings(
             @RequestParam String username,
@@ -435,6 +463,7 @@ public class TraineeRestController {
             @ApiResponse(responseCode = "200", description = "Activation updated"),
             @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
+    @SecurityRequirement(name = "bearerAuth")
     @PatchMapping("/activate")
     public ResponseEntity<String> activateOrDeactivateTrainee(
             @RequestParam String username,

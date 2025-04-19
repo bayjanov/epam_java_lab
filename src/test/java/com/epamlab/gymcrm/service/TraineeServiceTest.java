@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -24,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
+@AutoConfigureMockMvc(addFilters = false)
 class TraineeServiceTest {
 
     @Mock private TraineeRepository traineeRepository;
@@ -48,17 +50,20 @@ class TraineeServiceTest {
     @Test
     void createTrainee_shouldGenerateCredentialsAndSave() {
         when(userService.generateUniqueUsername("John", "Doe")).thenReturn("john.doe");
-        when(userService.generatePassword(10)).thenReturn("password123");
+        when(userService.generateRawPassword(10)).thenReturn("rawpass123");
+        when(userService.encodePassword("rawpass123")).thenReturn("encodedpass123");
 
         traineeService.createTrainee(trainee);
 
         verify(traineeRepository).save(trainee);
         assertEquals("john.doe", trainee.getUsername());
+        assertEquals("encodedpass123", trainee.getPassword());
     }
 
     @Test
     void authenticateTrainee_shouldReturnTrue() {
         when(traineeRepository.findByUsername("john.doe")).thenReturn(Optional.of(trainee));
+        when(userService.matchesRawPassword("password123", "password123")).thenReturn(true);
         assertTrue(traineeService.authenticateTrainee("john.doe", "password123"));
     }
 

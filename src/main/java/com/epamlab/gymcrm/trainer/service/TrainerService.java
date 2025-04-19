@@ -1,5 +1,6 @@
 package com.epamlab.gymcrm.trainer.service;
 
+import com.epamlab.gymcrm.trainer.dto.TrainerRegistrationResponse;
 import com.epamlab.gymcrm.trainer.model.Trainer;
 import com.epamlab.gymcrm.trainer.repository.TrainerRepository;
 import com.epamlab.gymcrm.user.service.UserService;
@@ -23,7 +24,7 @@ public class TrainerService {
 
     public boolean authenticateTrainer(String username, String password) {
         return trainerRepository.findByUsername(username)
-                .map(t -> t.getPassword().equals(password))
+                .map(t -> userProfileService.matchesRawPassword(password, t.getPassword()))
                 .orElse(false);
     }
 
@@ -45,13 +46,21 @@ public class TrainerService {
         }
     }
 
-    public void createTrainer(Trainer trainer) {
-        trainer.setUsername(userProfileService.generateUniqueUsername(trainer.getFirstName(), trainer.getLastName()));
-        trainer.setPassword(userProfileService.generatePassword(10));
+    public TrainerRegistrationResponse createTrainer(Trainer trainer) {
         validateTrainerFields(trainer);
+
+        String rawPassword = userProfileService.generateRawPassword(10);
+        String encodedPassword = userProfileService.encodePassword(rawPassword);
+
+        trainer.setUsername(userProfileService.generateUniqueUsername(trainer.getFirstName(), trainer.getLastName()));
+        trainer.setPassword(encodedPassword);
+
         trainerRepository.save(trainer);
         logger.info("Created trainer: {}", trainer);
+
+        return new TrainerRegistrationResponse(trainer, rawPassword);
     }
+
 
     public Trainer getTrainer(Long id) {
         return trainerRepository.findById(id).orElse(null);
@@ -102,7 +111,7 @@ public class TrainerService {
         Trainer trainer = trainerRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("Trainer not found: " + username));
 
-        trainer.setPassword(newPassword);
+        trainer.setPassword(userProfileService.encodePassword(newPassword));
         trainerRepository.save(trainer);
         logger.info("Password changed for trainer: {}", username);
     }

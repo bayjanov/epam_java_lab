@@ -4,9 +4,11 @@ import com.epamlab.gymcrm.metrics.MetricsService;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@AutoConfigureMockMvc(addFilters = false)
 public class MetricsServiceTest {
 
     private MetricsService metricsService;

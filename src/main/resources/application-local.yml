@@ -31,3 +31,7 @@ logging:
   level:
     root: INFO
     com.epamlab.gymcrm: DEBUG
+
+jwt:
+  secret: "k6a/62x0yKGBnpOeD8dHiXZ3Y1OD1MwbMGEulC6J9no="
+  expriation: 3600000

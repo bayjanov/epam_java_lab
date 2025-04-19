@@ -1,12 +1,17 @@
 package com.epamlab.gymcrm.trainer.rest;
 
 import com.epamlab.gymcrm.facade.GymFacade;
+import com.epamlab.gymcrm.security.bruteforce.LoginAttemptService;
+import com.epamlab.gymcrm.security.jwt.JwtTokenProvider;
+import com.epamlab.gymcrm.trainer.dto.TrainerRegistrationResponse;
 import com.epamlab.gymcrm.trainer.model.Trainer;
 import com.epamlab.gymcrm.trainee.model.Trainee;
 import com.epamlab.gymcrm.training.model.Training;
 import com.epamlab.gymcrm.metrics.MetricsService;
 
+import com.epamlab.gymcrm.user.dto.RegistrationResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -28,11 +33,18 @@ public class TrainerRestController {
     private static final Logger logger = LoggerFactory.getLogger(TrainerRestController.class);
     private final GymFacade gymFacade;
     private final MetricsService metricsService;
+    private final LoginAttemptService loginAttemptService;
+    private final JwtTokenProvider jwtTokenProvider;
 
 
-    public TrainerRestController(GymFacade gymFacade, MetricsService metricsService){
+    public TrainerRestController(GymFacade gymFacade,
+                                 MetricsService metricsService,
+                                 LoginAttemptService loginAttemptService,
+                                 JwtTokenProvider jwtTokenProvider) {
         this.gymFacade = gymFacade;
         this.metricsService = metricsService;
+        this.loginAttemptService = loginAttemptService;
+        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     private String generateTxId() {
@@ -46,19 +58,15 @@ public class TrainerRestController {
             @ApiResponse(responseCode = "400", description = "Validation error")
     })
     @PostMapping("/register")
-    public ResponseEntity<Map<String, String>> registerTrainer(@RequestBody Trainer trainer) {
+    public ResponseEntity<TrainerRegistrationResponse> registerTrainer(@RequestBody Trainer trainer) {
         String txId = generateTxId();
         logger.info("[{}] POST /api/trainers/register => {}", txId, trainer);
 
-        gymFacade.createTrainer(trainer);
-
-        Map<String, String> response = new HashMap<>();
-        response.put("username", trainer.getUsername());
-        response.put("password", trainer.getPassword());
+        TrainerRegistrationResponse result = gymFacade.createTrainer(trainer);
 
         logger.info("[{}] Trainer registered with username: {}", txId, trainer.getUsername());
         metricsService.incrementTrainerLogin();
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
+        return new ResponseEntity<>(result, HttpStatus.CREATED);
     }
 
     // TRAINER LOGIN (GET)
@@ -75,14 +83,23 @@ public class TrainerRestController {
         String txId = generateTxId();
         logger.info("[{}] GET /api/trainers/login?username={}", txId, username);
 
+        if (loginAttemptService.isBlocked(username)) {
+            logger.warn("[{}] Trainer account locked: {}", txId, username);
+            return ResponseEntity.status(423).body("Account temporarily locked due to failed attempts");
+        }
+
         boolean isValid = gymFacade.authenticateTrainer(username, password);
         if (isValid) {
-            logger.info("[{}] Trainer login successful: {}", txId, username);
+            loginAttemptService.loginSucceeded(username);
             metricsService.incrementTrainerLogin();
-            return ResponseEntity.ok("Login successful");
+
+            String token = jwtTokenProvider.generateToken(username);
+            logger.info("[{}] Trainer login success: {}", txId, username);
+            return ResponseEntity.ok(token);
         } else {
+            loginAttemptService.loginFailed(username);
             logger.warn("[{}] Trainer login failed: {}", txId, username);
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+            return ResponseEntity.status(401).body("Invalid credentials");
         }
     }
 
@@ -93,6 +110,7 @@ public class TrainerRestController {
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "404", description = "Trainer not found")
     })
+    @SecurityRequirement(name = "bearerAuth")
     @PutMapping("/change-login")
     public ResponseEntity<String> changeTrainerPassword(
             @RequestParam String username,
@@ -127,6 +145,7 @@ public class TrainerRestController {
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "404", description = "Trainer not found")
     })
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/profile")
     public ResponseEntity<?> getTrainerProfile(
             @RequestParam String username,
@@ -154,11 +173,11 @@ public class TrainerRestController {
         // Trainees list
         List<Map<String, Object>> traineesInfo = new ArrayList<>();
         for (Trainee tr : trainer.getTrainees()) {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("traineeUsername", tr.getUsername());
-            m.put("traineeFirstName", tr.getFirstName());
-            m.put("traineeLastName", tr.getLastName());
-            traineesInfo.add(m);
+            Map<String, Object> traineeMap = new LinkedHashMap<>();
+            traineeMap.put("traineeUsername", tr.getUsername());
+            traineeMap.put("traineeFirstName", tr.getFirstName());
+            traineeMap.put("traineeLastName", tr.getLastName());
+            traineesInfo.add(traineeMap);
         }
         resp.put("traineesList", traineesInfo);
 
@@ -174,6 +193,7 @@ public class TrainerRestController {
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "404", description = "Trainer not found")
     })
+    @SecurityRequirement(name = "bearerAuth")
     @PutMapping("/profile")
     public ResponseEntity<?> updateTrainerProfile(
             @RequestParam String username,
@@ -217,11 +237,11 @@ public class TrainerRestController {
         // Trainees
         List<Map<String, Object>> traineesInfo = new ArrayList<>();
         for (Trainee tr : trainer.getTrainees()) {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("traineeUsername", tr.getUsername());
-            m.put("traineeFirstName", tr.getFirstName());
-            m.put("traineeLastName", tr.getLastName());
-            traineesInfo.add(m);
+            Map<String, Object> traineeMap = new LinkedHashMap<>();
+            traineeMap.put("traineeUsername", tr.getUsername());
+            traineeMap.put("traineeFirstName", tr.getFirstName());
+            traineeMap.put("traineeLastName", tr.getLastName());
+            traineesInfo.add(traineeMap);
         }
         resp.put("traineesList", traineesInfo);
 
@@ -234,6 +254,7 @@ public class TrainerRestController {
             @ApiResponse(responseCode = "200", description = "OK"),
             @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/trainings")
     public ResponseEntity<?> getTrainerTrainings(
             @RequestParam String username,
@@ -267,13 +288,13 @@ public class TrainerRestController {
 
         List<Map<String, Object>> results = new ArrayList<>();
         for (Training tr : trainings) {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("trainingName", tr.getTrainingName());
-            m.put("trainingDate", tr.getTrainingDate());
-            m.put("trainingType", tr.getTrainingType());
-            m.put("trainingDuration", tr.getDurationMinutes());
-            m.put("traineeName", tr.getTrainee().getFirstName() + " " + tr.getTrainee().getLastName());
-            results.add(m);
+            Map<String, Object> trainingsMap = new LinkedHashMap<>();
+            trainingsMap.put("trainingName", tr.getTrainingName());
+            trainingsMap.put("trainingDate", tr.getTrainingDate());
+            trainingsMap.put("trainingType", tr.getTrainingType());
+            trainingsMap.put("trainingDuration", tr.getDurationMinutes());
+            trainingsMap.put("traineeName", tr.getTrainee().getFirstName() + " " + tr.getTrainee().getLastName());
+            results.add(trainingsMap);
         }
 
         logger.info("[{}] Returning {} trainings for trainer: {}", txId, results.size(), username);
@@ -286,6 +307,7 @@ public class TrainerRestController {
             @ApiResponse(responseCode = "200", description = "Activation updated"),
             @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
+    @SecurityRequirement(name = "bearerAuth")
     @PatchMapping("/activate")
     public ResponseEntity<String> activateOrDeactivateTrainer(
             @RequestParam String username,

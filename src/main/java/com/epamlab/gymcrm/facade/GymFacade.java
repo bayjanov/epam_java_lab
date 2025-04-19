@@ -1,6 +1,8 @@
 package com.epamlab.gymcrm.facade;
 
+import com.epamlab.gymcrm.trainee.dto.TraineeRegistrationResponse;
 import com.epamlab.gymcrm.trainee.model.Trainee;
+import com.epamlab.gymcrm.trainer.dto.TrainerRegistrationResponse;
 import com.epamlab.gymcrm.trainer.model.Trainer;
 import com.epamlab.gymcrm.training.model.Training;
 import com.epamlab.gymcrm.training.model.TrainingType;
@@ -32,9 +34,8 @@ public class GymFacade {
 
     // Trainer Management
     @Transactional
-    public Trainer createTrainer(Trainer trainer) {
-        trainerService.createTrainer(trainer);
-        return trainer;
+    public TrainerRegistrationResponse createTrainer(Trainer trainer) {
+        return trainerService.createTrainer(trainer);
     }
 
     public Trainer getTrainerByUsername(String username) {
@@ -53,9 +54,8 @@ public class GymFacade {
 
     // Trainee Management
     @Transactional
-    public Trainee createTrainee(Trainee trainee) {
-        traineeService.createTrainee(trainee);
-        return trainee;
+    public TraineeRegistrationResponse createTrainee(Trainee trainee) {
+        return traineeService.createTrainee(trainee);
     }
 
     public Trainee getTraineeByUsername(String username) {
@@ -67,7 +67,7 @@ public class GymFacade {
         traineeService.updateTrainee(username, password, updated);
     }
 
-    // NEW: List all trainees
+    // List all trainees
     public List<Trainee> listAllTrainees() {
         return traineeService.listAllTrainees();
     }

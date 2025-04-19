@@ -1,5 +1,6 @@
 package com.epamlab.gymcrm.trainee.service;
 
+import com.epamlab.gymcrm.trainee.dto.TraineeRegistrationResponse;
 import com.epamlab.gymcrm.trainee.repository.TraineeRepository;
 import com.epamlab.gymcrm.trainer.repository.TrainerRepository;
 import com.epamlab.gymcrm.trainee.model.Trainee;
@@ -37,16 +38,23 @@ public class TraineeService {
 
     public boolean authenticateTrainee(String username, String password) {
         return traineeRepository.findByUsername(username)
-                .map(t -> t.getPassword().equals(password))
+                .map(t -> userProfileService.matchesRawPassword(password, t.getPassword()))
                 .orElse(false);
     }
 
     @Transactional
-    public void createTrainee(Trainee trainee) {
+    public TraineeRegistrationResponse createTrainee(Trainee trainee) {
         validateTraineeFields(trainee);
+
+        String rawPassword = userProfileService.generateRawPassword(10);
+        String encodedPassword = userProfileService.encodePassword(rawPassword);
+
         trainee.setUsername(userProfileService.generateUniqueUsername(trainee.getFirstName(), trainee.getLastName()));
-        trainee.setPassword(userProfileService.generatePassword(10));
+        trainee.setPassword(encodedPassword);
+
         traineeRepository.save(trainee);
+
+        return new TraineeRegistrationResponse(trainee, rawPassword);
     }
 
     public Trainee getTraineeById(Long id) {
@@ -101,7 +109,7 @@ public class TraineeService {
     @Transactional
     public void changeTraineePassword(String username, String newPassword) {
         Trainee trainee = getTraineeByUsername(username);
-        trainee.setPassword(newPassword);
+        trainee.setPassword(userProfileService.encodePassword(newPassword));
         traineeRepository.save(trainee);
     }
 

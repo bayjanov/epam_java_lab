@@ -10,6 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 
 import java.util.Optional;
 
@@ -17,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@AutoConfigureMockMvc(addFilters = false)
 public class TrainerServiceTest {
 
     @Mock
@@ -40,12 +42,13 @@ public class TrainerServiceTest {
     @Test
     void testCreateTrainer_GeneratesCredentials() {
         when(userProfileService.generateUniqueUsername("John", "Doe")).thenReturn("john.doe");
-        when(userProfileService.generatePassword(10)).thenReturn("securePass123");
+        when(userProfileService.generateRawPassword(10)).thenReturn("securePass123");
+        when(userProfileService.encodePassword("securePass123")).thenReturn("encoded123");
 
         trainerService.createTrainer(trainer);
 
         assertEquals("john.doe", trainer.getUsername());
-        assertEquals("securePass123", trainer.getPassword());
+        assertEquals("encoded123", trainer.getPassword());
         verify(trainerRepository).save(trainer);
     }
 
@@ -53,6 +56,7 @@ public class TrainerServiceTest {
     void testAuthenticate_Success() {
         when(trainerRepository.findByUsername("john.doe"))
                 .thenReturn(Optional.of(trainer));
+        when(userProfileService.matchesRawPassword("password", "password")).thenReturn(true);
 
         assertTrue(trainerService.authenticateTrainer("john.doe", "password"));
     }
@@ -79,6 +83,7 @@ public class TrainerServiceTest {
     void testChangePassword_Authenticated() {
         when(trainerRepository.findByUsername("john.doe"))
                 .thenReturn(Optional.of(trainer));
+        when(userProfileService.encodePassword("newPass123")).thenReturn("newPass123");
 
         trainerService.changeTrainerPassword("john.doe", "newPass123");
 
@@ -90,6 +95,7 @@ public class TrainerServiceTest {
     void testUpdateTrainer_ValidFields() {
         when(trainerRepository.findByUsername("john.doe"))
                 .thenReturn(Optional.of(trainer));
+        when(userProfileService.matchesRawPassword("password", "password")).thenReturn(true);
 
         Trainer updated = new Trainer("Updated", "Doe", "Cardio", true);
 
@@ -104,6 +110,7 @@ public class TrainerServiceTest {
     void testUpdateTrainer_MissingFields() {
         Trainer invalidTrainer = new Trainer("", "Doe", "Cardio", true);
         when(trainerRepository.findByUsername("john.doe")).thenReturn(Optional.of(trainer));
+        when(userProfileService.matchesRawPassword("password", "password")).thenReturn(true);
 
         assertThrows(IllegalArgumentException.class, () ->
                 trainerService.updateTrainer("john.doe", "password", invalidTrainer));
@@ -112,6 +119,7 @@ public class TrainerServiceTest {
     @Test
     void testActivateDeactivateTrainer() {
         when(trainerRepository.findByUsername("john.doe")).thenReturn(Optional.of(trainer));
+        when(userProfileService.matchesRawPassword("password", "password")).thenReturn(true);
 
         trainerService.activateTrainer("john.doe", "password");
         assertTrue(trainer.isActive());
