@@ -25,6 +25,13 @@ spring:
         jwt:
           secret: "k6a/62x0yKGBnpOeD8dHiXZ3Y1OD1MwbMGEulC6J9no="
 
+  activemq:
+    broker-url: tcp://localhost:61616
+    user: admin
+    password: admin
+    packages:
+      trust-all: true
+
 eureka:
   client:
     register-with-eureka: true

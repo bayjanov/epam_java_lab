@@ -1,6 +1,6 @@
 package com.epamlab.gymcrm.facade;
 
-import com.epamlab.gymcrm.client.WorkloadGateway;
+import com.epamlab.gymcrm.messaging.TrainerWorkloadProducer;
 import com.epamlab.gymcrm.client.dto.TrainerWorkloadRequest;
 import com.epamlab.gymcrm.trainee.dto.TraineeRegistrationResponse;
 import com.epamlab.gymcrm.trainee.model.Trainee;
@@ -26,7 +26,8 @@ public class GymFacade {
     private final TrainerService trainerService;
     private final TraineeService traineeService;
     private final TrainingService trainingService;
-    private final WorkloadGateway workloadGateway;
+//    private final WorkloadGateway workloadGateway;
+    private final TrainerWorkloadProducer workloadProducer;
 
 
     // Trainer Management
@@ -104,7 +105,7 @@ public class GymFacade {
     public Training addTraining(Training training) {
         trainingService.createTraining(training);
 
-        workloadGateway.send(new TrainerWorkloadRequest(
+        workloadProducer.send(new TrainerWorkloadRequest(
                 training.getTrainer().getUsername(),
                 training.getTrainer().getFirstName(),
                 training.getTrainer().getLastName(),
@@ -122,7 +123,7 @@ public class GymFacade {
 
 
         Training t = trainingService.getTraining(trainingId);   // implement in service
-        workloadGateway.send( new TrainerWorkloadRequest(
+        workloadProducer.send( new TrainerWorkloadRequest(
                 t.getTrainer().getUsername(), t.getTrainer().getFirstName(),
                 t.getTrainer().getLastName(), t.getTrainer().isActive(),
                 t.getTrainingDate(), t.getDurationMinutes(),
