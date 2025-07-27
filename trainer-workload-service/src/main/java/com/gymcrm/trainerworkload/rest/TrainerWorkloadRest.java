@@ -7,6 +7,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
+
 import java.util.Map;
 
 @RestController
@@ -34,8 +36,15 @@ public class TrainerWorkloadRest {
 
     @PostMapping
     public ResponseEntity<?> handleWorkloadEvent(
-            @RequestBody TrainerWorkloadRequest request) {
-        service.processWorkload(request);
+            @RequestBody @Valid TrainerWorkloadRequest request,
+            @RequestHeader(value = "X-Transaction-Id", required = false) String transactionId) {
+
+        if (transactionId == null || transactionId.isBlank()) {
+            transactionId = "UNKNOWN"; // fallback for manual/API calls
+        }
+
+        service.processWorkload(request, transactionId);
         return ResponseEntity.ok().build();
     }
+
 }

@@ -1,23 +1,28 @@
 package com.gymcrm.trainerworkload.model;
 
-import jakarta.persistence.*;
 import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@Entity
 @Data
+@Document(collection = "trainer_workloads")
 public class TrainerWorkload {
     @Id
-    private String username;
+    private String username;   // Username as ID
 
+    @Indexed
     private String firstName;
+
+    @Indexed
     private String lastName;
+
     private boolean isActive;
 
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    private List<WorkloadYear> years =  new ArrayList<>();
+    private List<WorkloadYear> years = new ArrayList<>();
 
     public TrainerWorkload(String username, String firstName, String lastName, boolean isActive) {
         this.username = username;
@@ -26,6 +31,5 @@ public class TrainerWorkload {
         this.isActive = isActive;
     }
 
-    // Required no-arg constructor for JPA
     public TrainerWorkload() {}
 }

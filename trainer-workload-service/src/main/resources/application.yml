@@ -16,6 +16,11 @@ spring:
   h2:
     console:
       enabled: true
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/gymcrm
+      database: gymcrm
+
   devtools:
     restart:
       enabled: false

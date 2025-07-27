@@ -5,22 +5,25 @@ import com.gymcrm.trainerworkload.model.TrainerWorkload;
 import com.gymcrm.trainerworkload.model.WorkloadMonth;
 import com.gymcrm.trainerworkload.model.WorkloadYear;
 import com.gymcrm.trainerworkload.repository.TrainerWorkloadRepository;
-import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.Optional;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class TrainerWorkloadServiceImpl implements TrainerWorkloadService {
 
-    @Autowired
-    private TrainerWorkloadRepository repository;
+    private final TrainerWorkloadRepository repository;
 
     @Override
-    @Transactional
-    public void processWorkload(TrainerWorkloadRequest dto) {
+    public void processWorkload(TrainerWorkloadRequest dto, String transactionId) {
+        log.info("txId={} - Processing workload for trainer {}", transactionId, dto.getUsername());
+
+        // (a) Try to extract Trainer's record
         TrainerWorkload trainer = repository.findByUsername(dto.getUsername())
                 .orElseGet(() -> {
                     TrainerWorkload newTrainer = new TrainerWorkload(
@@ -29,48 +32,51 @@ public class TrainerWorkloadServiceImpl implements TrainerWorkloadService {
                             dto.getLastName(),
                             dto.isActive()
                     );
-                    return repository.save(newTrainer);
+                    log.debug("txId={} - Created new trainer document for {}", transactionId, dto.getUsername());
+                    return newTrainer;
                 });
 
-        LocalDate date =  dto.getTrainingDate();
+        LocalDate date = dto.getTrainingDate();
         int year = date.getYear();
         int month = date.getMonthValue();
 
-        // Find or create WorkloadYear
+        // (b) Find or create WorkloadYear
         WorkloadYear workloadYear = trainer.getYears().stream()
                 .filter(y -> y.getYear() == year)
                 .findFirst()
                 .orElseGet(() -> {
-                    WorkloadYear newYear =  new WorkloadYear(year);
+                    WorkloadYear newYear = new WorkloadYear(year);
                     trainer.getYears().add(newYear);
+                    log.debug("txId={} - Created new year {} for trainer {}", transactionId, year, dto.getUsername());
                     return newYear;
                 });
 
-        // Find or create  WorkloadMonth
+        // (c) Find or create WorkloadMonth
         WorkloadMonth workloadMonth = workloadYear.getMonths().stream()
                 .filter(y -> y.getMonth() == month)
                 .findFirst()
                 .orElseGet(() -> {
                     WorkloadMonth newMonth = new WorkloadMonth(month, 0);
                     workloadYear.getMonths().add(newMonth);
+                    log.debug("txId={} - Created new month {} for trainer {}", transactionId, month, dto.getUsername());
                     return newMonth;
                 });
 
-        // Update duration
+        // (d) Update duration
         int delta = dto.getActionType() == TrainerWorkloadRequest.ActionType.ADD
                 ? dto.getDuration()
                 : -dto.getDuration();
-
         workloadMonth.setTotalDuration(workloadMonth.getTotalDuration() + delta);
 
-        // Save
+        // (e) Save document
         repository.save(trainer);
+
+        log.info("txId={} - Updated trainer {} workload: year={}, month={}, totalDuration={}",
+                transactionId, dto.getUsername(), year, month, workloadMonth.getTotalDuration());
     }
 
     @Override
-    @Transactional
     public Optional<Integer> getMonthlyDuration(String username, int year, int month) {
-
         return repository.findByUsername(username)
                 .flatMap(tw -> tw.getYears().stream()
                         .filter(y -> y.getYear() == year)
